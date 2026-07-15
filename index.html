@@ -377,7 +377,7 @@
         // Load configuration and initialize app
         async function loadConfig() {
             try {
-                const response = await fetch('config.json');
+                const response = await fetch('config.json', { cache: 'no-store' });
                 config = await response.json();
                 initializeApp();
             } catch (error) {
@@ -450,7 +450,7 @@
                 
                 return `
                     <div class="donation-card">
-                        <img src="${donation.image}" alt="${donation.name}" class="card-image">
+                        <img src="${donation.image}?v=${Date.now()}" alt="${donation.name}" class="card-image">
                         <div class="card-content">
                             <div class="card-header">
                                 <h2 class="card-title">${donation.name}</h2>
