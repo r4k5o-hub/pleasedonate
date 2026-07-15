@@ -143,7 +143,8 @@ for donation in cfg.get('donations', []):
         </div>
         <div style="margin-top:18px;color:#777;font-size:0.95em">{suggest_text}</div>
       </div>
-    </div>
+     </div>
+   </div>
   </div>
   <script>
   // Embedded donation object (server-rendered values)
