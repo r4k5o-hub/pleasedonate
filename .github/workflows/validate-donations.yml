@@ -1,4 +1,4 @@
-name: Validate Donations Config
+name: Validate Config Changes
 
 on:
   pull_request:
@@ -15,47 +15,94 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if PR author is authorized
-        id: authorize
+      - name: Get PR author
+        id: author
         run: |
           AUTHOR="${{ github.event.pull_request.user.login }}"
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Check if donations array was modified
+        id: donations-changed
+        run: |
+          python3 << 'EOF'
+          import json
+          import subprocess
+          
+          # Get the diff of config.json
+          result = subprocess.run(
+              ['git', 'diff', 'origin/${{ github.base_ref }}...HEAD', '--', 'config.json'],
+              capture_output=True,
+              text=True
+          )
+          
+          diff_output = result.stdout
+          
+          # Check if the donations array section was modified
+          if '"donations"' in diff_output or '- ' in diff_output.split('"donations"')[0] if '"donations"' in diff_output else False:
+              # More precise check: parse both versions and compare donations arrays
+              try:
+                  # Get base version
+                  base_result = subprocess.run(
+                      ['git', 'show', 'origin/${{ github.base_ref }}:config.json'],
+                      capture_output=True,
+                      text=True
+                  )
+                  base_config = json.loads(base_result.stdout)
+                  
+                  # Get head version
+                  with open('config.json', 'r') as f:
+                      head_config = json.loads(f.read())
+                  
+                  # Compare donations arrays
+                  if base_config.get('donations') != head_config.get('donations'):
+                      print("true")
+                      exit(0)
+              except Exception as e:
+                  print(f"Error comparing configs: {e}")
+                  print("true")
+                  exit(0)
+          
+          print("false")
+          exit(0)
+          EOF
+        shell: bash
+
+      - name: Block unauthorized donations changes
+        if: steps.donations-changed.outputs.stdout == 'true'
+        run: |
+          AUTHOR="${{ steps.author.outputs.author }}"
           ALLOWED_AUTHORS=("r4k5O" "r4k5o-hub")
           
-          if [[ " ${ALLOWED_AUTHORS[@]} " =~ " ${AUTHOR} " ]]; then
-            echo "authorized=true" >> $GITHUB_OUTPUT
-            echo "✅ PR author '$AUTHOR' is authorized to modify donations"
+          if [[ ! " ${ALLOWED_AUTHORS[@]} " =~ " ${AUTHOR} " ]]; then
+            echo "❌ Access Denied!"
+            echo "User '$AUTHOR' is not authorized to modify the donations array."
+            echo "Only r4k5O and r4k5o-hub can change donations."
+            echo ""
+            echo "However, you CAN modify:"
+            echo "  - Translations (add new languages)"
+            echo "  - Site settings"
+            echo "  - New configuration fields"
+            echo ""
+            echo "Please remove any changes to the 'donations' array and try again."
+            exit 1
           else
-            echo "authorized=false" >> $GITHUB_OUTPUT
-            echo "❌ PR author '$AUTHOR' is NOT authorized to modify donations"
+            echo "✅ User '$AUTHOR' is authorized to modify donations"
           fi
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v41
-        with:
-          files: |
-            config.json
-
-      - name: Validate donations changes
-        if: steps.changed-files.outputs.any_changed == 'true'
+      - name: Validate JSON structure
         run: |
-          # Get the base and head commits
-          git fetch origin ${{ github.base_ref }}
-          
-          # Show what changed in config.json
-          echo "Changes in config.json:"
-          git diff origin/${{ github.base_ref }}...HEAD -- config.json
-          
-          # Try to validate JSON structure
           python3 << 'EOF'
           import json
           import sys
           
           try:
               with open('config.json', 'r') as f:
-                  config = json.load(f)
+                  config = json.loads(f.read())
               
-              # Validate required fields
+              # Validate required top-level fields
               if 'donations' not in config:
                   print("❌ Error: 'donations' field is missing")
                   sys.exit(1)
@@ -78,15 +125,8 @@ jobs:
               sys.exit(1)
           EOF
 
-      - name: Block PR if unauthorized
-        if: steps.authorize.outputs.authorized == 'false'
-        run: |
-          echo "❌ Access Denied!"
-          echo "Only authorized accounts (r4k5O, r4k5o-hub) can modify donations in config.json"
-          exit 1
-
-      - name: Approve donations changes
-        if: steps.authorize.outputs.authorized == 'true'
+      - name: Summary
+        if: success()
         run: |
           echo "✅ All validations passed!"
-          echo "PR author is authorized and config.json is valid"
+          echo "config.json is valid and changes are authorized"
