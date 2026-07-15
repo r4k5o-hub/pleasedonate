@@ -1,0 +1,99 @@
+{
+  "site": {
+    "title": "Please Donate",
+    "description": "Help people who really need it",
+    "language": "en"
+  },
+  "donations": [
+    {
+      "id": 1,
+      "name": "Emergency Medical Fund",
+      "description": "Help cover urgent medical expenses for families in need",
+      "goal": 5000,
+      "raised": 2350,
+      "platform": "gofundme",
+      "url": "https://gofundme.com/example1",
+      "category": "medical",
+      "urgency": "high",
+      "image": "https://via.placeholder.com/300x200?text=Medical+Fund"
+    },
+    {
+      "id": 2,
+      "name": "Education for Underprivileged Children",
+      "description": "Support education programs for children in underserved communities",
+      "goal": 10000,
+      "raised": 7200,
+      "platform": "gofundme",
+      "url": "https://gofundme.com/example2",
+      "category": "education",
+      "urgency": "medium",
+      "image": "https://via.placeholder.com/300x200?text=Education+Fund"
+    },
+    {
+      "id": 3,
+      "name": "Disaster Relief - Flood Support",
+      "description": "Provide emergency aid to families affected by recent flooding",
+      "goal": 8000,
+      "raised": 6100,
+      "platform": "gofundme",
+      "url": "https://gofundme.com/example3",
+      "category": "disaster",
+      "urgency": "critical",
+      "image": "https://via.placeholder.com/300x200?text=Disaster+Relief"
+    },
+    {
+      "id": 4,
+      "name": "Food Security Program",
+      "description": "Combat hunger in local communities through food distribution",
+      "goal": 6000,
+      "raised": 3800,
+      "platform": "gofundme",
+      "url": "https://gofundme.com/example4",
+      "category": "food",
+      "urgency": "high",
+      "image": "https://via.placeholder.com/300x200?text=Food+Security"
+    },
+    {
+      "id": 5,
+      "name": "Homeless Support Initiative",
+      "description": "Provide shelter, clothing, and support services for homeless individuals",
+      "goal": 12000,
+      "raised": 4500,
+      "platform": "gofundme",
+      "url": "https://gofundme.com/example5",
+      "category": "housing",
+      "urgency": "high",
+      "image": "https://via.placeholder.com/300x200?text=Homeless+Support"
+    }
+  ],
+  "translations": {
+    "en": {
+      "title": "Please Donate",
+      "subtitle": "Help People in Need",
+      "goal": "Goal",
+      "raised": "Raised",
+      "donate": "Donate Now",
+      "category": "Category",
+      "urgency": "Urgency",
+      "search": "Search donations...",
+      "filterByCategory": "Filter by Category",
+      "filterByUrgency": "Filter by Urgency",
+      "allCategories": "All Categories",
+      "allUrgency": "All Urgency Levels"
+    },
+    "de": {
+      "title": "Bitte Spenden",
+      "subtitle": "Helfen Sie Menschen in Not",
+      "goal": "Ziel",
+      "raised": "Gesammelt",
+      "donate": "Jetzt Spenden",
+      "category": "Kategorie",
+      "urgency": "Dringlichkeit",
+      "search": "Spenden durchsuchen...",
+      "filterByCategory": "Nach Kategorie filtern",
+      "filterByUrgency": "Nach Dringlichkeit filtern",
+      "allCategories": "Alle Kategorien",
+      "allUrgency": "Alle Dringlichkeitsstufen"
+    }
+  }
+}

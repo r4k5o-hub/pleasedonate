@@ -1,0 +1,93 @@
+name: Validate Config Changes
+
+on:
+  pull_request:
+    paths:
+      - 'config.json'
+
+jobs:
+  validate-config:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Warn about donations array edits
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          ALLOWED_AUTHORS=("r4k5O" "r4k5o-hub")
+
+          # Fetch base branch content for comparison
+          git fetch origin ${{ github.base_ref }} || true
+
+          CHANGED=$(python3 - <<'PY'
+import json,subprocess
+try:
+    base = subprocess.run(['git','show',f'origin/${{ github.base_ref }}:config.json'], capture_output=True, text=True)
+    base_cfg = json.loads(base.stdout)
+except Exception:
+    base_cfg = {}
+try:
+    head_cfg = json.load(open('config.json'))
+except Exception:
+    head_cfg = {}
+print('true' if base_cfg.get('donations') != head_cfg.get('donations') else 'false')
+PY
+)
+
+          if [ "$CHANGED" = "true" ]; then
+            AUTHORIZED=false
+            for u in "${ALLOWED_AUTHORS[@]}"; do
+              if [ "$u" = "$AUTHOR" ]; then
+                AUTHORIZED=true
+                break
+              fi
+            done
+
+            if [ "$AUTHORIZED" = "false" ]; then
+              echo "❌ NOTICE: Your pull request modifies the 'donations' array in config.json but you are not listed as an owner."
+              echo "If you need to report a problem, suggest a donation, or need help, please contact the owners: @r4k5O or @r4k5o-hub"
+              echo "You can also open an issue describing the change and request assistance from the owners."
+              echo "This repository uses CODEOWNERS to require approval from the owners for changes to the donations list."
+            fi
+          fi
+
+      - name: Validate JSON structure
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+          
+          try:
+              with open('config.json', 'r') as f:
+                  config = json.loads(f.read())
+              
+              # Validate required top-level fields
+              if 'donations' not in config:
+                  print("❌ Error: 'donations' field is missing")
+                  sys.exit(1)
+              
+              if not isinstance(config['donations'], list):
+                  print("❌ Error: 'donations' must be an array")
+                  sys.exit(1)
+              
+              # Validate each donation has required fields
+              required_fields = ['id', 'name', 'description', 'url', 'platform']
+              for idx, donation in enumerate(config['donations']):
+                  for field in required_fields:
+                      if field not in donation:
+                          print(f"❌ Error: Donation #{idx} missing required field: {field}")
+                          sys.exit(1)
+              
+              print(f"✅ JSON is valid with {len(config['donations'])} donations")
+          except json.JSONDecodeError as e:
+              print(f"❌ JSON parsing error: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ All validations passed!"
+          echo "config.json is valid"

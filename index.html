@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Please Donate</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 40px 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .language-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .lang-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .lang-btn.active {
+            background: #764ba2;
+            font-weight: bold;
+        }
+
+        .lang-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-group select {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .donations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .donation-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .donation-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .card-content {
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .card-title {
+            flex: 1;
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+
+        .urgency-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        .urgency-critical {
+            background: #ff4757;
+            color: white;
+        }
+
+        .urgency-high {
+            background: #ffa502;
+            color: white;
+        }
+
+        .urgency-medium {
+            background: #ffd93d;
+            color: #333;
+        }
+
+        .urgency-low {
+            background: #6bcf7f;
+            color: white;
+        }
+
+        .card-description {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .card-category {
+            display: inline-block;
+            background: #f0f0f0;
+            color: #667eea;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-bottom: 15px;
+        }
+
+        .progress-section {
+            margin-bottom: 15px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            color: #666;
+        }
+
+        .progress-label strong {
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+
+        .card-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .donate-btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .donate-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .donate-btn:active {
+            transform: scale(0.98);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: column;
+            }
+
+            .filter-group select {
+                width: 100%;
+            }
+
+            .donations-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+
+            .language-switcher {
+                position: static;
+                justify-content: center;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="language-switcher">
+        <button class="lang-btn active" onclick="switchLanguage('en')">EN</button>
+        <button class="lang-btn" onclick="switchLanguage('de')">DE</button>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1 id="site-title">Please Donate</h1>
+            <p id="site-subtitle">Help People in Need</p>
+        </header>
+
+        <div class="controls">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="Search donations..."
+                    oninput="filterDonations()"
+                >
+            </div>
+            <div class="filter-group">
+                <select id="category-filter" onchange="filterDonations()">
+                    <option value="">All Categories</option>
+                    <option value="medical">Medical</option>
+                    <option value="education">Education</option>
+                    <option value="disaster">Disaster</option>
+                    <option value="food">Food</option>
+                    <option value="housing">Housing</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select id="urgency-filter" onchange="filterDonations()">
+                    <option value="">All Urgency Levels</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="donations-container" class="donations-grid"></div>
+        <div id="no-results" class="no-results" style="display:none;">No donations found matching your criteria.</div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Please Donate. Made with ❤️ for a better world.</p>
+    </footer>
+
+    <script>
+        let config = null;
+        let currentLanguage = 'en';
+        let filteredDonations = [];
+
+        // Load configuration and initialize app
+        async function loadConfig() {
+            try {
+                const response = await fetch('config.json');
+                config = await response.json();
+                initializeApp();
+            } catch (error) {
+                console.error('Error loading config:', error);
+                document.getElementById('donations-container').innerHTML = 
+                    '<div class="no-results">Error loading donations. Please refresh the page.</div>';
+            }
+        }
+
+        function initializeApp() {
+            updateLanguage();
+            renderDonations(config.donations);
+            updateFilters();
+        }
+
+        function updateLanguage() {
+            const lang = config.translations[currentLanguage];
+            document.getElementById('site-title').textContent = lang.title;
+            document.getElementById('site-subtitle').textContent = lang.subtitle;
+            document.getElementById('search-input').placeholder = lang.search;
+            
+            const categorySelect = document.getElementById('category-filter');
+            categorySelect.options[0].text = lang.allCategories;
+            
+            const urgencySelect = document.getElementById('urgency-filter');
+            urgencySelect.options[0].text = lang.allUrgency;
+            
+            filterDonations();
+        }
+
+        function switchLanguage(lang) {
+            currentLanguage = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateLanguage();
+        }
+
+        function updateFilters() {
+            const lang = config.translations[currentLanguage];
+            const categorySelect = document.getElementById('category-filter');
+            const urgencySelect = document.getElementById('urgency-filter');
+            
+            // Update category filter labels
+            const categories = [...new Set(config.donations.map(d => d.category))];
+            categories.forEach(cat => {
+                if (!categorySelect.querySelector(`option[value="${cat}"]`)) {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+                    categorySelect.appendChild(option);
+                }
+            });
+        }
+
+        function renderDonations(donations) {
+            const container = document.getElementById('donations-container');
+            const noResults = document.getElementById('no-results');
+            const lang = config.translations[currentLanguage];
+
+            if (donations.length === 0) {
+                container.innerHTML = '';
+                noResults.style.display = 'block';
+                return;
+            }
+
+            noResults.style.display = 'none';
+            container.innerHTML = donations.map(donation => {
+                const percentage = (donation.raised / donation.goal) * 100;
+                const urgencyClass = `urgency-${donation.urgency}`;
+                
+                return `
+                    <div class="donation-card">
+                        <img src="${donation.image}" alt="${donation.name}" class="card-image">
+                        <div class="card-content">
+                            <div class="card-header">
+                                <h2 class="card-title">${donation.name}</h2>
+                                <span class="urgency-badge ${urgencyClass}">
+                                    ${donation.urgency}
+                                </span>
+                            </div>
+                            <p class="card-description">${donation.description}</p>
+                            <span class="card-category">${donation.category.charAt(0).toUpperCase() + donation.category.slice(1)}</span>
+                            
+                            <div class="progress-section">
+                                <div class="progress-label">
+                                    <span>${lang.raised}</span>
+                                    <strong>$${donation.raised.toLocaleString()} / $${donation.goal.toLocaleString()}</strong>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${Math.min(percentage, 100)}%"></div>
+                                </div>
+                                <div style="margin-top: 5px; text-align: right; color: #999; font-size: 0.9em;">
+                                    ${Math.round(percentage)}%
+                                </div>
+                            </div>
+                            
+                            <div class="card-footer">
+                                <a href="${donation.url}" target="_blank" class="donate-btn" style="text-decoration: none;">
+                                    ${lang.donate}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterDonations() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const categoryFilter = document.getElementById('category-filter').value;
+            const urgencyFilter = document.getElementById('urgency-filter').value;
+
+            filteredDonations = config.donations.filter(donation => {
+                const matchesSearch = 
+                    donation.name.toLowerCase().includes(searchTerm) ||
+                    donation.description.toLowerCase().includes(searchTerm);
+                const matchesCategory = !categoryFilter || donation.category === categoryFilter;
+                const matchesUrgency = !urgencyFilter || donation.urgency === urgencyFilter;
+
+                return matchesSearch && matchesCategory && matchesUrgency;
+            });
+
+            renderDonations(filteredDonations);
+        }
+
+        // Load config when page loads
+        document.addEventListener('DOMContentLoaded', loadConfig);
+    </script>
+</body>
+</html>
