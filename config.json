@@ -16,6 +16,11 @@
       "category": "medical",
       "urgency": "high",
       "image": "https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg",
+      "external": {
+        "provider": "gofundme",
+        "api_url": null,
+        "live_tracking": false
+      },
       "i18n": {
         "en": {
           "name": "Amelie's Wonderful Lift Fund",
