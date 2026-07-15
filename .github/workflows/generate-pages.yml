@@ -1,0 +1,42 @@
+name: Generate donation pages
+
+on:
+  push:
+    paths:
+      - 'config.json'
+      - 'scripts/generate_donation_pages.py'
+  pull_request:
+    paths:
+      - 'config.json'
+      - 'scripts/generate_donation_pages.py'
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run generator
+        run: |
+          python scripts/generate_donation_pages.py
+
+      - name: Commit generated pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add donation-*.html || true
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: regenerate donation pages (auto)" || true
+            git push
+          else
+            echo "No changes to generated pages"
+          fi
