@@ -24,10 +24,10 @@
         <div class="progress">
           <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:8px">
             <div>Gesammelt</div>
-            <div><strong>$2350 / $5000</strong></div>
+            <div><strong>$<span id="raised-amount">2350</span> / $<span id="goal-amount">5000</span></strong></div>
           </div>
           <div class="progress-bar"><div class="progress-fill" style="width:47%"></div></div>
-          <div style="text-align:right;color:#888;margin-top:6px">47%</div>
+          <div style="text-align:right;color:#888;margin-top:6px"><span id="percent">47%</span></div>
         </div>
         <div class="actions">
           <a class="btn btn-primary" href="https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift" target="_blank">Jetzt Spenden</a>
@@ -37,5 +37,78 @@
       </div>
     </div>
   </div>
+  <script>
+  // Embedded donation object (server-rendered values)
+  const donation = {"id": 1, "name": "Emergency Medical Fund", "url": "https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift", "platform": "gofundme", "external": {}, "raised": 2350, "goal": 5000};
+  
+async function tryFetchExternal(apiUrl){
+  try{
+    const r = await fetch(apiUrl);
+    if(r.ok) return await r.json();
+  }catch(e){console.warn('external json fetch failed',e);}return null
+}
+
+async function fetchViaProxy(url){
+  // Use jina.ai proxy to fetch HTML (may be rate limited)
+  const proxy = 'https://r.jina.ai/http://';
+  try{
+    const strip = url.replace(/^https?:\/\//, '');
+    const r = await fetch(proxy + strip);
+    if(r.ok) return await r.text();
+  }catch(e){console.warn('proxy fetch failed',e);}return null
+}
+
+function parseMoney(s){
+  if(!s) return null;
+  const m = String(s).match(/([0-9,.]+)/);
+  if(!m) return null; return Number(m[1].replace(/[,]/g,''))
+}
+
+function parseGoFundMe(htmlText){
+  if(!htmlText) return null;
+  // try JSON-like fields
+  let m = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,\.]+)"?/i);
+  if(m && m[1]) return {raised: parseMoney(m[1])};
+  m = htmlText.match(/"goalAmount"\s*:\s*"?([0-9,\.]+)"?/i);
+  const raisedMatch = htmlText.match(/Raised\s*to\s*date[^\$\d]*\$?([0-9,.,]+)/i) || htmlText.match(/\$([0-9,.,]+)\s*raised/i);
+  let raised = null, goal = null;
+  if(raisedMatch) raised = parseMoney(raisedMatch[1]);
+  if(m && m[1]) goal = parseMoney(m[1]);
+  if(raised || goal) return {raised,goal};
+  // meta og:description
+  m = htmlText.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+  if(m && m[1]){
+    const txt = m[1]; const r = txt.match(/\$([0-9,.,]+)/);
+    if(r) return {raised: parseMoney(r[1])};
+  }
+  return null
+}
+
+async function updateProgress(donation){
+  // donation is an object with url, platform, external (api_url), raised, goal
+  if(donation.external && donation.external.api_url){
+    const data = await tryFetchExternal(donation.external.api_url);
+    if(data){ if(data.raised) donation.raised = data.raised; if(data.goal) donation.goal = data.goal; }
+  } else if((donation.platform||'').toLowerCase()==='gofundme' && donation.url){
+    const htmlText = await fetchViaProxy(donation.url);
+    const parsed = parseGoFundMe(htmlText);
+    if(parsed){ if(parsed.raised) donation.raised = parsed.raised; if(parsed.goal) donation.goal = parsed.goal; }
+  }
+  // update DOM
+  try{
+    const raisedEl = document.getElementById('raised-amount');
+    const goalEl = document.getElementById('goal-amount');
+    const percentEl = document.getElementById('percent');
+    const fill = document.querySelector('.progress-fill');
+    if(raisedEl) raisedEl.textContent = donation.raised.toLocaleString();
+    if(goalEl) goalEl.textContent = donation.goal.toLocaleString();
+    if(fill) fill.style.width = Math.min(100, Math.round(donation.raised/donation.goal*100)) + '%';
+    if(percentEl) percentEl.textContent = Math.min(100, Math.round(donation.raised/donation.goal*100)) + '%';
+  }catch(e){console.warn('update DOM failed',e)}
+}
+
+  // attempt to update progress on load
+  updateProgress(donation);
+  </script>
 </body>
 </html>
