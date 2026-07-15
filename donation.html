@@ -48,11 +48,30 @@
 
     (async function(){
       const cfg = await loadConfig();
-      const id = getQueryParam('id');
+      const id = getQueryParam('donationid') || getQueryParam('id');
+      const langParam = getQueryParam('lang') || (cfg && cfg.site && cfg.site.language) || 'en';
+      const t = (cfg && cfg.translations && cfg.translations[langParam]) || {};
       const container = document.getElementById('content');
-      if(!cfg){ container.innerHTML = '<div class="no-found">Error loading configuration.</div>'; return }
+
+      if(!cfg){ container.innerHTML = `<div class="no-found">${t.errorLoadingConfig || 'Error loading configuration.'}</div>`; return }
       const donation = (cfg.donations||[]).find(d=>String(d.id)===String(id));
-      if(!donation){ container.innerHTML = '<div class="no-found">Donation not found. Return to the list.</div>'; return }
+      if(!donation){ container.innerHTML = `<div class="no-found">${t.donationNotFound || 'Donation not found. Return to the list.'}</div>`; return }
+
+      // Attempt basic platform integration if donation.external.api_url is provided
+      let externalData = null;
+      if(donation.external && donation.external.api_url){
+        try{
+          const r = await fetch(donation.external.api_url);
+          if(r.ok){
+            externalData = await r.json();
+            // Expect externalData to contain at least 'raised' and optional 'goal'
+            if(externalData.raised) donation.raised = externalData.raised;
+            if(externalData.goal) donation.goal = externalData.goal;
+          }
+        }catch(e){
+          console.warn('External tracking fetch failed', e);
+        }
+      }
 
       const percent = Math.min(100, Math.round((donation.raised/donation.goal)*100));
       container.innerHTML = `
@@ -60,12 +79,12 @@
           <img src="${donation.image}?v=${Date.now()}" alt="${donation.name}">
           <div class="details">
             <h1>${donation.name}</h1>
-            <div class="meta">Category: ${donation.category || 'N/A'} • Urgency: ${donation.urgency || 'N/A'}</div>
+            <div class="meta">${t.category || 'Category'}: ${donation.category || 'N/A'} • ${t.urgency || 'Urgency'}: ${donation.urgency || 'N/A'}</div>
             <p style="margin-top:12px;color:#444">${donation.description || ''}</p>
 
             <div class="progress">
               <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:8px">
-                <div>Raised</div>
+                <div>${t.raised || 'Raised'}</div>
                 <div><strong>$${fmt(donation.raised)} / $${fmt(donation.goal)}</strong></div>
               </div>
               <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
@@ -73,14 +92,25 @@
             </div>
 
             <div class="actions">
-              <a class="btn btn-primary" href="${donation.url}" target="_blank">Donate</a>
-              <a class="btn btn-ghost" href="mailto:r4k5o-hub@example.com?subject=Donation%20question%20for%20${encodeURIComponent(donation.name)}">Contact owner</a>
+              <a class="btn btn-primary" href="${donation.url}" target="_blank">${t.donate || 'Donate'}</a>
+              <a class="btn btn-ghost" href="mailto:r4k5o-hub@example.com?subject=${encodeURIComponent((t.contactEmailSubject || 'Donation question for') + ' ' + donation.name)}">${t.contactOwner || 'Contact owner'}</a>
             </div>
 
-            <div style="margin-top:18px;color:#777;font-size:0.95em">If you have problems or want to suggest a donation, please open an issue or contact the owners listed in the repository.</div>
-          </div>
-        </div>
+            <div style="margin-top:18px;color:#777;font-size:0.95em">${t.suggestOpenIssue || 'If you have problems or want to suggest a donation, please open an issue or contact the owners listed in the repository.'}</div>
       `;
+
+      if(!externalData){
+        const note = document.createElement('div');
+        note.style = 'margin-top:12px;color:#aa5500;font-size:0.95em';
+        note.textContent = t.liveTrackingUnavailable || 'Live tracking not available for this platform.';
+        container.querySelector('.details').appendChild(note);
+      } else {
+        const note = document.createElement('div');
+        note.style = 'margin-top:12px;color:#337ab7;font-size:0.95em';
+        note.textContent = `Live tracking: updated from ${donation.external && donation.external.provider || 'external source'}`;
+        container.querySelector('.details').appendChild(note);
+      }
+
     })();
   </script>
 </body>
