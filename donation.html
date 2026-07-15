@@ -59,17 +59,63 @@
 
       // Attempt basic platform integration if donation.external.api_url is provided
       let externalData = null;
-      if(donation.external && donation.external.api_url){
+      const platform = (donation.platform || '').toLowerCase();
+
+      async function fetchExternalJson(url){
         try{
-          const r = await fetch(donation.external.api_url);
-          if(r.ok){
-            externalData = await r.json();
-            // Expect externalData to contain at least 'raised' and optional 'goal'
-            if(externalData.raised) donation.raised = externalData.raised;
-            if(externalData.goal) donation.goal = externalData.goal;
-          }
-        }catch(e){
-          console.warn('External tracking fetch failed', e);
+          const r = await fetch(url);
+          if(r.ok) return await r.json();
+        }catch(e){ console.warn('External JSON fetch failed', e); }
+        return null;
+      }
+
+      async function fetchViaCorsProxy(targetUrl){
+        // Uses a lightweight proxy that returns scraped HTML (may be rate-limited)
+        const proxy = 'https://r.jina.ai/http://';
+        try{
+          // strip protocol for proxy usage
+          const strip = targetUrl.replace(/^https?:\/\//, '');
+          const r = await fetch(proxy + strip);
+          if(r.ok) return await r.text();
+        }catch(e){ console.warn('Proxy fetch failed', e); }
+        return null;
+      }
+
+      async function parseGoFundMe(htmlText){
+        if(!htmlText) return null;
+        // Try to find JSON-like snippets
+        let m = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,\.]+)"?/i);
+        if(m && m[1]) return { raised: Number(m[1].replace(/[,]/g, '')) };
+        m = htmlText.match(/"goalAmount"\s*:\s*"?([0-9,\.]+)"?/i);
+        const raisedMatch = htmlText.match(/Raised\s*to\s*date[^\$\d]*\$?([0-9,.,]+)/i) || htmlText.match(/\$([0-9,.,]+)\s*raised/i);
+        let raised = null, goal = null;
+        if(raisedMatch) raised = Number(raisedMatch[1].replace(/[,]/g, ''));
+        if(m && m[1]) goal = Number(m[1].replace(/[,]/g, ''));
+        if(raised || goal) return { raised, goal };
+        // Try meta tags
+        m = htmlText.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+        if(m && m[1]){
+          const txt = m[1];
+          const r = txt.match(/\$([0-9,.,]+)/);
+          if(r) return { raised: Number(r[1].replace(/[,]/g, '')) };
+        }
+        return null;
+      }
+
+      if(donation.external && donation.external.api_url){
+        externalData = await fetchExternalJson(donation.external.api_url);
+        if(externalData){
+          if(externalData.raised) donation.raised = externalData.raised;
+          if(externalData.goal) donation.goal = externalData.goal;
+        }
+      } else if(platform === 'gofundme' && donation.url){
+        // Try scraping the GoFundMe public page via a CORS-friendly proxy
+        const htmlText = await fetchViaCorsProxy(donation.url);
+        const parsed = await parseGoFundMe(htmlText);
+        if(parsed){
+          if(parsed.raised) donation.raised = parsed.raised;
+          if(parsed.goal) donation.goal = parsed.goal;
+          externalData = parsed;
         }
       }
 
