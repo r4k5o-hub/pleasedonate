@@ -94,8 +94,11 @@ async function updateProgress(donation){
 
 for donation in cfg.get('donations', []):
     for lang_code, texts in translations.items():
-        title = f"{donation.get('name')} - {site.get('title','')}"
-        meta_desc = donation.get('description','')
+        # prefer localized name/description when available
+        name_local = donation.get('i18n', {}).get(lang_code, {}).get('name') or donation.get('name')
+        desc_local = donation.get('i18n', {}).get(lang_code, {}).get('description') or donation.get('description')
+        title = f"{name_local} - {site.get('title','')}"
+        meta_desc = desc_local or donation.get('description','')
         fname = f"donation-{donation.get('id')}-{lang_code}.html"
         path = os.path.join(ROOT, fname)
 
@@ -136,7 +139,7 @@ for donation in cfg.get('donations', []):
         </div>
         <div class="actions">
           <a class="btn btn-primary" href="{url}" target="_blank">{donate_text}</a>
-          <a class="btn btn-ghost" href="mailto:r4k5o-hub@example.com?subject={contact_subject}%20{name}">{contact_text}</a>
+          <a class="btn btn-ghost" id="open-issue-btn" href="#">{contact_text}</a>
         </div>
         <div style="margin-top:18px;color:#777;font-size:0.95em">{suggest_text}</div>
       </div>
@@ -148,6 +151,7 @@ for donation in cfg.get('donations', []):
   __CLIENT_JS__
   // attempt to update progress on load
   updateProgress(donation);
+  __ISSUE_SCRIPT__
   </script>
 </body>
 </html>'''
@@ -167,20 +171,20 @@ for donation in cfg.get('donations', []):
         # Fill template
         content = template.format(
             lang=safe(lang_code),
-            title=safe(donation.get('name')) + ' - ' + safe(site.get('title','')),
+            title=safe(name_local) + ' - ' + safe(site.get('title','')),
             meta_desc=safe(meta_desc),
-            og_title=safe(donation.get('name')),
+            og_title=safe(name_local),
             og_desc=safe(meta_desc),
             og_image=safe(donation.get('image') or ''),
             fname=fname,
             back_text=safe(texts.get('backToList','Back to list')),
             image=safe(donation.get('image')),
-            name=safe(donation.get('name')),
+            name=safe(name_local),
             category_text=safe(texts.get('category','Category')),
             category=safe(donation.get('category') or 'N/A'),
             urgency_text=safe(texts.get('urgency','Urgency')),
             urgency=safe(donation.get('urgency') or 'N/A'),
-            description=safe(donation.get('description') or ''),
+            description=safe(desc_local or donation.get('description') or ''),
             raised=safe(str(donation.get('raised',0))),
             goal=safe(str(donation.get('goal',0))),
             raised_text=safe(texts.get('raised','Raised')),
@@ -194,6 +198,20 @@ for donation in cfg.get('donations', []):
 
         # Insert JSON and client JS tokens (replace safe tokens)
         content = content.replace('__JSON_OBJ__', json_obj).replace('__CLIENT_JS__', CLIENT_JS)
+
+        # Insert issue script (avoid format placeholder conflicts)
+        issue_script = f"""
+  // set issue link to open a new GitHub issue mentioning owners
+  (function(){{
+    const issueUrlBase = 'https://github.com/r4k5o-hub/pleasedonate/issues/new';
+    const title = encodeURIComponent('{safe(texts.get('contactEmailSubject','Donation question for'))}' + ' ' + donation.name);
+    const body = encodeURIComponent('Please mention @r4k5O and @r4k5o-hub when opening the issue.\n\nDescribe your question or suggestion about the donation: ' + donation.name);
+    const fullIssueUrl = issueUrlBase + '?title=' + title + '&body=' + body;
+    const issueBtn = document.getElementById('open-issue-btn');
+    if(issueBtn){{ issueBtn.setAttribute('href', fullIssueUrl); issueBtn.setAttribute('target','_blank'); }}
+  }})();
+"""
+        content = content.replace('__ISSUE_SCRIPT__', issue_script)
 
         # write file
         with open(path, 'w', encoding='utf-8') as out:

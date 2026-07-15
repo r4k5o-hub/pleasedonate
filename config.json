@@ -7,15 +7,25 @@
   "donations": [
     {
       "id": 1,
-      "name": "Emergency Medical Fund",
-      "description": "Help cover urgent medical expenses for families in need",
+      "name": "Amelie's Fund",
+      "description": "Support Amelie’s project — funds to install a small lift so Amelie can access the upper floor.",
       "goal": 5000,
       "raised": 2350,
       "platform": "gofundme",
       "url": "https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift",
       "category": "medical",
       "urgency": "high",
-      "image": "https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg"
+      "image": "https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg",
+      "i18n": {
+        "en": {
+          "name": "Amelie's Wonderful Lift Fund",
+          "description": "This campaign supports Amelie — the funds will go toward installing a small lift to help Amelie reach the upper floor safely and independently."
+        },
+        "de": {
+          "name": "Amelies fabelhafter Lift",
+          "description": "Diese Kampagne unterstützt Amelie — die Spenden werden für die Installation eines kleinen Lifts verwendet, damit Amelie sicher und selbstständig die obere Etage erreichen kann."
+        }
+      }
     }
   ],
   "translations": {
