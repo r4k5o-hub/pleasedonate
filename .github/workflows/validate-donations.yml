@@ -1,0 +1,92 @@
+name: Validate Donations Config
+
+on:
+  pull_request:
+    paths:
+      - 'config.json'
+
+jobs:
+  validate-config:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if PR author is authorized
+        id: authorize
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          ALLOWED_AUTHORS=("r4k5O" "r4k5o-hub")
+          
+          if [[ " ${ALLOWED_AUTHORS[@]} " =~ " ${AUTHOR} " ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "✅ PR author '$AUTHOR' is authorized to modify donations"
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "❌ PR author '$AUTHOR' is NOT authorized to modify donations"
+          fi
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            config.json
+
+      - name: Validate donations changes
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          # Get the base and head commits
+          git fetch origin ${{ github.base_ref }}
+          
+          # Show what changed in config.json
+          echo "Changes in config.json:"
+          git diff origin/${{ github.base_ref }}...HEAD -- config.json
+          
+          # Try to validate JSON structure
+          python3 << 'EOF'
+          import json
+          import sys
+          
+          try:
+              with open('config.json', 'r') as f:
+                  config = json.load(f)
+              
+              # Validate required fields
+              if 'donations' not in config:
+                  print("❌ Error: 'donations' field is missing")
+                  sys.exit(1)
+              
+              if not isinstance(config['donations'], list):
+                  print("❌ Error: 'donations' must be an array")
+                  sys.exit(1)
+              
+              # Validate each donation has required fields
+              required_fields = ['id', 'name', 'description', 'url', 'platform']
+              for idx, donation in enumerate(config['donations']):
+                  for field in required_fields:
+                      if field not in donation:
+                          print(f"❌ Error: Donation #{idx} missing required field: {field}")
+                          sys.exit(1)
+              
+              print(f"✅ JSON is valid with {len(config['donations'])} donations")
+          except json.JSONDecodeError as e:
+              print(f"❌ JSON parsing error: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Block PR if unauthorized
+        if: steps.authorize.outputs.authorized == 'false'
+        run: |
+          echo "❌ Access Denied!"
+          echo "Only authorized accounts (r4k5O, r4k5o-hub) can modify donations in config.json"
+          exit 1
+
+      - name: Approve donations changes
+        if: steps.authorize.outputs.authorized == 'true'
+        run: |
+          echo "✅ All validations passed!"
+          echo "PR author is authorized and config.json is valid"
