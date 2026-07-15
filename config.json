@@ -12,58 +12,10 @@
       "goal": 5000,
       "raised": 2350,
       "platform": "gofundme",
-      "url": "https://gofundme.com/example1",
+      "url": "https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift",
       "category": "medical",
       "urgency": "high",
-      "image": "https://via.placeholder.com/300x200?text=Medical+Fund"
-    },
-    {
-      "id": 2,
-      "name": "Education for Underprivileged Children",
-      "description": "Support education programs for children in underserved communities",
-      "goal": 10000,
-      "raised": 7200,
-      "platform": "gofundme",
-      "url": "https://gofundme.com/example2",
-      "category": "education",
-      "urgency": "medium",
-      "image": "https://via.placeholder.com/300x200?text=Education+Fund"
-    },
-    {
-      "id": 3,
-      "name": "Disaster Relief - Flood Support",
-      "description": "Provide emergency aid to families affected by recent flooding",
-      "goal": 8000,
-      "raised": 6100,
-      "platform": "gofundme",
-      "url": "https://gofundme.com/example3",
-      "category": "disaster",
-      "urgency": "critical",
-      "image": "https://via.placeholder.com/300x200?text=Disaster+Relief"
-    },
-    {
-      "id": 4,
-      "name": "Food Security Program",
-      "description": "Combat hunger in local communities through food distribution",
-      "goal": 6000,
-      "raised": 3800,
-      "platform": "gofundme",
-      "url": "https://gofundme.com/example4",
-      "category": "food",
-      "urgency": "high",
-      "image": "https://via.placeholder.com/300x200?text=Food+Security"
-    },
-    {
-      "id": 5,
-      "name": "Homeless Support Initiative",
-      "description": "Provide shelter, clothing, and support services for homeless individuals",
-      "goal": 12000,
-      "raised": 4500,
-      "platform": "gofundme",
-      "url": "https://gofundme.com/example5",
-      "category": "housing",
-      "urgency": "high",
-      "image": "https://via.placeholder.com/300x200?text=Homeless+Support"
+      "image": "https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg"
     }
   ],
   "translations": {
