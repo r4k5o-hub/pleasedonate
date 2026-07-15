@@ -31,7 +31,16 @@
       "filterByCategory": "Filter by Category",
       "filterByUrgency": "Filter by Urgency",
       "allCategories": "All Categories",
-      "allUrgency": "All Urgency Levels"
+      "allUrgency": "All Urgency Levels",
+      "viewDetails": "View Details",
+      "backToList": "Back to list",
+      "contactOwner": "Contact owner",
+      "donationNotFound": "Donation not found. Return to the list.",
+      "errorLoadingConfig": "Error loading configuration.",
+      "liveTrackingUnavailable": "Live tracking not available for this platform.",
+      "donationDetailsTitle": "Donation Details",
+      "contactEmailSubject": "Donation question for",
+      "suggestOpenIssue": "If you have problems or want to suggest a donation, please open an issue or contact the owners listed in the repository."
     },
     "de": {
       "title": "Bitte Spenden",
@@ -45,7 +54,16 @@
       "filterByCategory": "Nach Kategorie filtern",
       "filterByUrgency": "Nach Dringlichkeit filtern",
       "allCategories": "Alle Kategorien",
-      "allUrgency": "Alle Dringlichkeitsstufen"
+      "allUrgency": "Alle Dringlichkeitsstufen",
+      "viewDetails": "Details anzeigen",
+      "backToList": "Zurück zur Liste",
+      "contactOwner": "Kontakt",
+      "donationNotFound": "Spende nicht gefunden. Zurück zur Liste.",
+      "errorLoadingConfig": "Fehler beim Laden der Konfiguration.",
+      "liveTrackingUnavailable": "Live-Tracking für diese Plattform nicht verfügbar.",
+      "donationDetailsTitle": "Spenden-Details",
+      "contactEmailSubject": "Frage zur Spende für",
+      "suggestOpenIssue": "Wenn Sie Probleme haben oder eine Spende vorschlagen möchten, öffnen Sie bitte ein Issue oder kontaktieren Sie die Repository-Eigentümer."
     }
   }
 }
