@@ -139,7 +139,7 @@
 
             <div class="actions">
               <a class="btn btn-primary" href="${donation.url}" target="_blank">${t.donate || 'Donate'}</a>
-              <a class="btn btn-ghost" href="mailto:r4k5o-hub@example.com?subject=${encodeURIComponent((t.contactEmailSubject || 'Donation question for') + ' ' + donation.name)}">${t.contactOwner || 'Contact owner'}</a>
+              <a class="btn btn-ghost" id="open-issue-btn" href="#">${t.contactOwner || 'Contact owner'}</a>
             </div>
 
             <div style="margin-top:18px;color:#777;font-size:0.95em">${t.suggestOpenIssue || 'If you have problems or want to suggest a donation, please open an issue or contact the owners listed in the repository.'}</div>
@@ -155,6 +155,17 @@
         note.style = 'margin-top:12px;color:#337ab7;font-size:0.95em';
         note.textContent = `Live tracking: updated from ${donation.external && donation.external.provider || 'external source'}`;
         container.querySelector('.details').appendChild(note);
+      }
+
+      // Replace contact action to open a GitHub issue mentioning owners
+      const issueUrlBase = 'https://github.com/r4k5o-hub/pleasedonate/issues/new';
+      const title = encodeURIComponent((t.contactEmailSubject || 'Donation question for') + ' ' + donation.name);
+      const body = encodeURIComponent(`Please mention @r4k5O and @r4k5o-hub when opening the issue.\n\nDescribe your question or suggestion about the donation: ${donation.name}`);
+      const fullIssueUrl = `${issueUrlBase}?title=${title}&body=${body}`;
+      const issueBtn = document.getElementById('open-issue-btn');
+      if(issueBtn){
+        issueBtn.setAttribute('href', fullIssueUrl);
+        issueBtn.setAttribute('target', '_blank');
       }
 
     })();

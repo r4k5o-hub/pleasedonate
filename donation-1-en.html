@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Emergency Medical Fund - Please Donate</title>
-<meta name="description" content="Help cover urgent medical expenses for families in need">
-<meta property="og:title" content="Emergency Medical Fund">
-<meta property="og:description" content="Help cover urgent medical expenses for families in need">
+<title>Amelie&#x27;s Wonderful Lift Fund - Please Donate</title>
+<meta name="description" content="This campaign supports Amelie — the funds will go toward installing a small lift to help Amelie reach the upper floor safely and independently.">
+<meta property="og:title" content="Amelie&#x27;s Wonderful Lift Fund">
+<meta property="og:description" content="This campaign supports Amelie — the funds will go toward installing a small lift to help Amelie reach the upper floor safely and independently.">
 <meta property="og:image" content="https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="donation-1-en.html">
@@ -16,11 +16,11 @@
   <div class="container">
     <a href="index.html" class="back">← Back to list</a>
     <div class="hero">
-      <img src="https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg" alt="Emergency Medical Fund">
+      <img src="https://d2g8igdw686xgo.cloudfront.net/105468239_1782593308439083_r.jpg" alt="Amelie&#x27;s Wonderful Lift Fund">
       <div class="details">
-        <h1>Emergency Medical Fund</h1>
+        <h1>Amelie&#x27;s Wonderful Lift Fund</h1>
         <div class="meta">Category: medical • Urgency: high</div>
-        <p style="margin-top:12px;color:#444">Help cover urgent medical expenses for families in need</p>
+        <p style="margin-top:12px;color:#444">This campaign supports Amelie — the funds will go toward installing a small lift to help Amelie reach the upper floor safely and independently.</p>
         <div class="progress">
           <div style="display:flex;justify-content:space-between;color:#666;margin-bottom:8px">
             <div>Raised</div>
@@ -31,7 +31,7 @@
         </div>
         <div class="actions">
           <a class="btn btn-primary" href="https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift" target="_blank">Donate Now</a>
-          <a class="btn btn-ghost" href="mailto:r4k5o-hub@example.com?subject=Donation question for%20Emergency Medical Fund">Contact owner</a>
+          <a class="btn btn-ghost" id="open-issue-btn" href="#">Contact owner</a>
         </div>
         <div style="margin-top:18px;color:#777;font-size:0.95em">If you have problems or want to suggest a donation, please open an issue or contact the owners listed in the repository.</div>
       </div>
@@ -39,7 +39,7 @@
   </div>
   <script>
   // Embedded donation object (server-rendered values)
-  const donation = {"id": 1, "name": "Emergency Medical Fund", "url": "https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift", "platform": "gofundme", "external": {}, "raised": 2350, "goal": 5000};
+  const donation = {"id": 1, "name": "Amelie's Fund", "url": "https://www.gofundme.com/f/amelies-fabelhafter-traum-von-einem-lift", "platform": "gofundme", "external": {}, "raised": 2350, "goal": 5000};
   
 async function tryFetchExternal(apiUrl){
   try{
@@ -109,6 +109,19 @@ async function updateProgress(donation){
 
   // attempt to update progress on load
   updateProgress(donation);
+  
+  // set issue link to open a new GitHub issue mentioning owners
+  (function(){
+    const issueUrlBase = 'https://github.com/r4k5o-hub/pleasedonate/issues/new';
+    const title = encodeURIComponent('Donation question for' + ' ' + donation.name);
+    const body = encodeURIComponent('Please mention @r4k5O and @r4k5o-hub when opening the issue.
+
+Describe your question or suggestion about the donation: ' + donation.name);
+    const fullIssueUrl = issueUrlBase + '?title=' + title + '&body=' + body;
+    const issueBtn = document.getElementById('open-issue-btn');
+    if(issueBtn){ issueBtn.setAttribute('href', fullIssueUrl); issueBtn.setAttribute('target','_blank'); }
+  })();
+
   </script>
 </body>
 </html>
