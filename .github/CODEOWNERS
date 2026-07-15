@@ -1,0 +1,8 @@
+# This file specifies code owners for the project
+# GitHub enforces that these users must approve changes to their assigned files
+
+# Only r4k5O and r4k5o-hub can approve changes to donations config
+config.json @r4k5O @r4k5o-hub
+
+# Workflow changes require approval from code owners too (security best practice)
+.github/workflows/ @r4k5O @r4k5o-hub

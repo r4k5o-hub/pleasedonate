@@ -12,85 +12,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get PR author
-        id: author
-        run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
-
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref }}
-
-      - name: Check if donations array was modified
-        id: donations-changed
-        run: |
-          python3 << 'EOF'
-          import json
-          import subprocess
-          
-          # Get the diff of config.json
-          result = subprocess.run(
-              ['git', 'diff', 'origin/${{ github.base_ref }}...HEAD', '--', 'config.json'],
-              capture_output=True,
-              text=True
-          )
-          
-          diff_output = result.stdout
-          
-          # Check if the donations array section was modified
-          if '"donations"' in diff_output or '- ' in diff_output.split('"donations"')[0] if '"donations"' in diff_output else False:
-              # More precise check: parse both versions and compare donations arrays
-              try:
-                  # Get base version
-                  base_result = subprocess.run(
-                      ['git', 'show', 'origin/${{ github.base_ref }}:config.json'],
-                      capture_output=True,
-                      text=True
-                  )
-                  base_config = json.loads(base_result.stdout)
-                  
-                  # Get head version
-                  with open('config.json', 'r') as f:
-                      head_config = json.loads(f.read())
-                  
-                  # Compare donations arrays
-                  if base_config.get('donations') != head_config.get('donations'):
-                      print("true")
-                      exit(0)
-              except Exception as e:
-                  print(f"Error comparing configs: {e}")
-                  print("true")
-                  exit(0)
-          
-          print("false")
-          exit(0)
-          EOF
-        shell: bash
-
-      - name: Block unauthorized donations changes
-        if: steps.donations-changed.outputs.stdout == 'true'
-        run: |
-          AUTHOR="${{ steps.author.outputs.author }}"
-          ALLOWED_AUTHORS=("r4k5O" "r4k5o-hub")
-          
-          if [[ ! " ${ALLOWED_AUTHORS[@]} " =~ " ${AUTHOR} " ]]; then
-            echo "❌ Access Denied!"
-            echo "User '$AUTHOR' is not authorized to modify the donations array."
-            echo "Only r4k5O and r4k5o-hub can change donations."
-            echo ""
-            echo "However, you CAN modify:"
-            echo "  - Translations (add new languages)"
-            echo "  - Site settings"
-            echo "  - New configuration fields"
-            echo ""
-            echo "Please remove any changes to the 'donations' array and try again."
-            exit 1
-          else
-            echo "✅ User '$AUTHOR' is authorized to modify donations"
-          fi
 
       - name: Validate JSON structure
         run: |
@@ -129,4 +50,4 @@ jobs:
         if: success()
         run: |
           echo "✅ All validations passed!"
-          echo "config.json is valid and changes are authorized"
+          echo "config.json is valid"
