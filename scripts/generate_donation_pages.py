@@ -25,11 +25,11 @@ out_files = []
 
 # Client-side JS to embed in each static page (keeps runtime logic centralized)
 CLIENT_JS = r'''
-async function fetchWithTimeout(url, timeoutMs = 5000){
+async function fetchWithTimeout(url, timeoutMs = 8000){
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try{
-    const r = await fetch(url, {signal: controller.signal});
+    const r = await fetch(url, {signal: controller.signal, mode: 'no-cors', credentials: 'omit'});
     clearTimeout(timeout);
     return r;
   }catch(e){
@@ -38,77 +38,119 @@ async function fetchWithTimeout(url, timeoutMs = 5000){
   }
 }
 
-async function tryFetchExternal(apiUrl){
-  try{
-    const r = await fetchWithTimeout(apiUrl, 8000);
-    if(r.ok) return await r.json();
-  }catch(e){console.warn('external json fetch failed',e);}
-  return null;
-}
-
 async function fetchViaProxy(url){
-  // Try jina.ai proxy with timeout
-  try{
-    const r = await fetchWithTimeout(url.replace(/^https?:\/\//, 'https://r.jina.ai/'), 8000);
-    if(r.ok) return await r.text();
-  }catch(e){
-    console.warn('proxy fetch failed', e);
+  // Try multiple CORS proxies with retries
+  const proxies = [
+    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?' + encodeURIComponent(u),
+    (u) => 'https://cors-anywhere.herokuapp.com/' + u.replace(/^https?:\/\//, '')
+  ];
+  
+  for(let attempt = 0; attempt < 2; attempt++){
+    for(const proxy of proxies){
+      try{
+        const proxyUrl = proxy(url);
+        const r = await fetchWithTimeout(proxyUrl, 10000);
+        if(r && r.ok) return await r.text();
+        if(r && r.status === 200) return await r.text();
+      }catch(e){
+        console.log(`Proxy attempt ${attempt+1}/${2} failed`);
+      }
+    }
   }
   return null;
 }
 
 function parseMoney(s){
   if(!s) return null;
-  const str = String(s).trim();
-  const m = str.match(/([0-9]{1,3}(?:[,.]?[0-9]{3})*(?:[.,][0-9]{2})?)/);
-  if(!m) return null;
-  return parseInt(m[1].replace(/[,.]/g, ''));
+  const str = String(s).trim().replace(/[^\d.,]/g, '');
+  if(!str) return null;
+  const num = parseInt(str.replace(/[,.]/g, ''));
+  return num > 0 ? num : null;
 }
 
 function parseGoFundMe(htmlText){
-  if(!htmlText) return null;
+  if(!htmlText || htmlText.length < 500) return null;
+  
   let raised = null, goal = null;
   
-  const raisedMatch = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,.]+)"?/i);
-  if(raisedMatch && raisedMatch[1]) raised = parseMoney(raisedMatch[1]);
+  // Primary: Look for JSON fields in page
+  const jsonMatch = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,.]+)"?/i);
+  if(jsonMatch && jsonMatch[1]) raised = parseMoney(jsonMatch[1]);
   
   const goalMatch = htmlText.match(/"goalAmount"\s*:\s*"?([0-9,.]+)"?/i);
   if(goalMatch && goalMatch[1]) goal = parseMoney(goalMatch[1]);
   
-  if(raised || goal) return {raised, goal};
+  // Fallback: Look for displayed amounts
+  if(!raised){
+    const raisedTextMatch = htmlText.match(/raised["\s:]*\$?([0-9,.]+)/i);
+    if(raisedTextMatch && raisedTextMatch[1]) raised = parseMoney(raisedTextMatch[1]);
+  }
+  
+  if(!goal){
+    const goalTextMatch = htmlText.match(/goal["\s:]*\$?([0-9,.]+)/i);
+    if(goalTextMatch && goalTextMatch[1]) goal = parseMoney(goalTextMatch[1]);
+  }
+  
+  if(raised && goal && raised > 0 && goal > 0) return {raised, goal};
   return null;
 }
 
 async function updateProgress(donation){
   if(!donation || !donation.url) return;
   
+  // Try API first if available
   if(donation.external && donation.external.api_url){
     try{
-      const data = await tryFetchExternal(donation.external.api_url);
-      if(data){
-        if(data.raised && data.raised > 0) donation.raised = data.raised;
-        if(data.goal && data.goal > 0) donation.goal = data.goal;
+      const r = await fetchWithTimeout(donation.external.api_url, 8000);
+      if(r && r.ok){
+        const data = await r.json();
+        if(data && data.raised && data.goal){
+          donation.raised = data.raised;
+          donation.goal = data.goal;
+          updateDOM(donation);
+          return;
+        }
       }
     }catch(e){
-      console.warn('external fetch failed', e);
+      console.log('API fetch failed', e);
     }
   }
   
+  // Try GoFundMe scraping with retries
+  if(donation.platform && donation.platform.toLowerCase() === 'gofundme'){
+    const htmlText = await fetchViaProxy(donation.url);
+    if(htmlText){
+      const parsed = parseGoFundMe(htmlText);
+      if(parsed && parsed.raised && parsed.goal){
+        donation.raised = parsed.raised;
+        donation.goal = parsed.goal;
+        updateDOM(donation);
+        return;
+      }
+    }
+  }
+  
+  // No updates available, but still render static values
+  updateDOM(donation);
+}
+
+function updateDOM(donation){
   try{
-    if(donation.goal && donation.goal > 0){
-      const pct = Math.min(100, Math.round(donation.raised / donation.goal * 100));
+    if(donation.goal > 0){
+      const pct = Math.min(100, Math.round((donation.raised || 0) / donation.goal * 100));
       const raisedEl = document.getElementById('raised-amount');
       const goalEl = document.getElementById('goal-amount');
       const percentEl = document.getElementById('percent');
       const fill = document.querySelector('.progress-fill');
       
-      if(raisedEl) raisedEl.textContent = donation.raised.toLocaleString();
+      if(raisedEl) raisedEl.textContent = (donation.raised || 0).toLocaleString();
       if(goalEl) goalEl.textContent = donation.goal.toLocaleString();
       if(fill) fill.style.width = pct + '%';
       if(percentEl) percentEl.textContent = pct + '%';
     }
   }catch(e){
-    console.warn('DOM update failed', e);
+    console.log('DOM update failed', e);
   }
 }
 '''
