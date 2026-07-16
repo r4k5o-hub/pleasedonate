@@ -1,0 +1,46 @@
+# freebuff.toml
+#
+# Configuration that the Freebuff preview UI reads when you click
+# "Start preview". The UI runs these commands in order:
+#
+#   1. install  → provision dependencies (none required, see below)
+#   2. build    → regenerate static donation pages from config.json
+#   3. dev      → serve the static site over HTTP for preview
+#
+# pleasedonate is a static-first fundraising platform:
+#   - Runtime = vanilla HTML / CSS / JS at the repo root
+#   - Generator = Python 3 stdlib only (no pip packages)
+#   - No package.json, no requirements.txt, no build framework
+#
+# So `install` is a no-op and `build` is just the Python generator.
+
+[project]
+name        = "pleasedonate"
+description = "Static-first fundraising landing-page platform hosted on GitHub Pages"
+type        = "static"          # signals "no Node/Vite/WSGI server expected"
+runtime     = "python3"         # generator + preview server both use system python3
+entry       = "index.html"      # what the preview UI should target
+
+# Install step — there are no npm, bun, or pip dependencies.
+# This explicit echo is a benign no-op that still keeps the section
+# well-formed for any downstream parser.
+[install]
+command = "echo 'pleasedonate has no dependencies (Python stdlib + static HTML).'"
+
+# Build step — regenerate donation-<id>-<lang>.html for every
+# (donation × language) pair defined in config.json. Skip the
+# scrape_gofundme.py step intentionally: scraping during a build
+# would slow preview and depend on third-party CORS proxies.
+[build]
+command = "python3 scripts/generate_donation_pages.py"
+inputs  = ["config.json", "scripts/generate_donation_pages.py"]
+outputs = ["donation-*.html"]
+
+# Preview / dev step — serve the project root via Python's
+# built-in HTTP server. Honors the $PORT env var if the Freebuff
+# preview platform sets one, otherwise default to 8080.
+# Visit "/" for index.html (the donation grid) or
+# "/donation-1-en.html" for a specific campaign page.
+[dev]
+command = "sh -c 'python3 -m http.server \"${PORT:-8080}\"'"
+port    = 8080
