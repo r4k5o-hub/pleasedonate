@@ -25,70 +25,91 @@ out_files = []
 
 # Client-side JS to embed in each static page (keeps runtime logic centralized)
 CLIENT_JS = r'''
+async function fetchWithTimeout(url, timeoutMs = 5000){
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try{
+    const r = await fetch(url, {signal: controller.signal});
+    clearTimeout(timeout);
+    return r;
+  }catch(e){
+    clearTimeout(timeout);
+    throw e;
+  }
+}
+
 async function tryFetchExternal(apiUrl){
   try{
-    const r = await fetch(apiUrl);
+    const r = await fetchWithTimeout(apiUrl, 8000);
     if(r.ok) return await r.json();
-  }catch(e){console.warn('external json fetch failed',e);}return null
+  }catch(e){console.warn('external json fetch failed',e);}
+  return null;
 }
 
 async function fetchViaProxy(url){
-  // Use jina.ai proxy to fetch HTML (may be rate limited)
-  const proxy = 'https://r.jina.ai/http://';
+  // Try jina.ai proxy with timeout
   try{
-    const strip = url.replace(/^https?:\/\//, '');
-    const r = await fetch(proxy + strip);
+    const r = await fetchWithTimeout(url.replace(/^https?:\/\//, 'https://r.jina.ai/'), 8000);
     if(r.ok) return await r.text();
-  }catch(e){console.warn('proxy fetch failed',e);}return null
+  }catch(e){
+    console.warn('proxy fetch failed', e);
+  }
+  return null;
 }
 
 function parseMoney(s){
   if(!s) return null;
-  const m = String(s).match(/([0-9,.]+)/);
-  if(!m) return null; return Number(m[1].replace(/[,]/g,''))
+  const str = String(s).trim();
+  const m = str.match(/([0-9]{1,3}(?:[,.]?[0-9]{3})*(?:[.,][0-9]{2})?)/);
+  if(!m) return null;
+  return parseInt(m[1].replace(/[,.]/g, ''));
 }
 
 function parseGoFundMe(htmlText){
   if(!htmlText) return null;
-  // try JSON-like fields
-  let m = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,\.]+)"?/i);
-  if(m && m[1]) return {raised: parseMoney(m[1])};
-  m = htmlText.match(/"goalAmount"\s*:\s*"?([0-9,\.]+)"?/i);
-  const raisedMatch = htmlText.match(/Raised\s*to\s*date[^\$\d]*\$?([0-9,.,]+)/i) || htmlText.match(/\$([0-9,.,]+)\s*raised/i);
   let raised = null, goal = null;
-  if(raisedMatch) raised = parseMoney(raisedMatch[1]);
-  if(m && m[1]) goal = parseMoney(m[1]);
-  if(raised || goal) return {raised,goal};
-  // meta og:description
-  m = htmlText.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
-  if(m && m[1]){
-    const txt = m[1]; const r = txt.match(/\$([0-9,.,]+)/);
-    if(r) return {raised: parseMoney(r[1])};
-  }
-  return null
+  
+  const raisedMatch = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,.]+)"?/i);
+  if(raisedMatch && raisedMatch[1]) raised = parseMoney(raisedMatch[1]);
+  
+  const goalMatch = htmlText.match(/"goalAmount"\s*:\s*"?([0-9,.]+)"?/i);
+  if(goalMatch && goalMatch[1]) goal = parseMoney(goalMatch[1]);
+  
+  if(raised || goal) return {raised, goal};
+  return null;
 }
 
 async function updateProgress(donation){
-  // donation is an object with url, platform, external (api_url), raised, goal
+  if(!donation || !donation.url) return;
+  
   if(donation.external && donation.external.api_url){
-    const data = await tryFetchExternal(donation.external.api_url);
-    if(data){ if(data.raised) donation.raised = data.raised; if(data.goal) donation.goal = data.goal; }
-  } else if((donation.platform||'').toLowerCase()==='gofundme' && donation.url){
-    const htmlText = await fetchViaProxy(donation.url);
-    const parsed = parseGoFundMe(htmlText);
-    if(parsed){ if(parsed.raised) donation.raised = parsed.raised; if(parsed.goal) donation.goal = parsed.goal; }
+    try{
+      const data = await tryFetchExternal(donation.external.api_url);
+      if(data){
+        if(data.raised && data.raised > 0) donation.raised = data.raised;
+        if(data.goal && data.goal > 0) donation.goal = data.goal;
+      }
+    }catch(e){
+      console.warn('external fetch failed', e);
+    }
   }
-  // update DOM
+  
   try{
-    const raisedEl = document.getElementById('raised-amount');
-    const goalEl = document.getElementById('goal-amount');
-    const percentEl = document.getElementById('percent');
-    const fill = document.querySelector('.progress-fill');
-    if(raisedEl) raisedEl.textContent = donation.raised.toLocaleString();
-    if(goalEl) goalEl.textContent = donation.goal.toLocaleString();
-    if(fill) fill.style.width = Math.min(100, Math.round(donation.raised/donation.goal*100)) + '%';
-    if(percentEl) percentEl.textContent = Math.min(100, Math.round(donation.raised/donation.goal*100)) + '%';
-  }catch(e){console.warn('update DOM failed',e)}
+    if(donation.goal && donation.goal > 0){
+      const pct = Math.min(100, Math.round(donation.raised / donation.goal * 100));
+      const raisedEl = document.getElementById('raised-amount');
+      const goalEl = document.getElementById('goal-amount');
+      const percentEl = document.getElementById('percent');
+      const fill = document.querySelector('.progress-fill');
+      
+      if(raisedEl) raisedEl.textContent = donation.raised.toLocaleString();
+      if(goalEl) goalEl.textContent = donation.goal.toLocaleString();
+      if(fill) fill.style.width = pct + '%';
+      if(percentEl) percentEl.textContent = pct + '%';
+    }
+  }catch(e){
+    console.warn('DOM update failed', e);
+  }
 }
 '''
 
