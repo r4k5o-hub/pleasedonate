@@ -309,11 +309,15 @@ for donation in cfg.get('donations', []):
         # Insert JSON and client JS tokens (replace safe tokens)
         content = content.replace('__JSON_OBJ__', json_obj).replace('__CLIENT_JS__', CLIENT_JS)
 
-        # Build issue URL components
+        # Build issue URL components. Both values are wrapped in json.dumps()
+        # so they become JS string literals once substituted into the embedded
+        # script (otherwise encodeURIComponent(__ISSUE_TITLE__) sees a bare
+        # identifier and the parser bails with "missing ) after argument list").
         issue_title = safe(texts.get('contactEmailSubject','Donation question for')) + ' ' + safe(donation.get('name'))
         issue_body = 'Please mention @r4k5O and @r4k5o-hub when opening the issue.\\n\\nDescribe your question or suggestion about the donation: ' + safe(donation.get('name'))
-        
-        content = content.replace('__ISSUE_TITLE__', issue_title).replace('__ISSUE_BODY__', issue_body)
+
+        content = content.replace('__ISSUE_TITLE__', json.dumps(issue_title)) \
+                        .replace('__ISSUE_BODY__',   json.dumps(issue_body))
 
         # write file
         with open(path, 'w', encoding='utf-8') as out:
