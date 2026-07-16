@@ -269,9 +269,9 @@ for donation in cfg.get('donations', []):
         # Insert JSON and client JS tokens (replace safe tokens)
         content = content.replace('__JSON_OBJ__', json_obj).replace('__CLIENT_JS__', CLIENT_JS)
 
-        # Build issue URL components
-        issue_title = safe(texts.get('contactEmailSubject','Donation question for')) + ' ' + safe(donation.get('name'))
-        issue_body = 'Please mention @r4k5O and @r4k5o-hub when opening the issue.\\n\\nDescribe your question or suggestion about the donation: ' + safe(donation.get('name'))
+        # Build issue URL components with proper JSON escaping
+        issue_title = json.dumps(safe(texts.get('contactEmailSubject','Donation question for')) + ' ' + safe(donation.get('name')))
+        issue_body = json.dumps('Please mention @r4k5O and @r4k5o-hub when opening the issue.\n\nDescribe your question or suggestion about the donation: ' + safe(donation.get('name')))
         
         content = content.replace('__ISSUE_TITLE__', issue_title).replace('__ISSUE_BODY__', issue_body)
 
