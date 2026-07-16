@@ -53,7 +53,13 @@ Operational improvements:
 * ``argparse`` CLI: ``--config PATH``, ``--dry-run``, ``--quiet``.
 * Polite ``Accept`` / ``Accept-Language`` request headers.
 * URL normalisation strips tracking junk and forces the canonical host.
-* Money parser supports EU ``"1.234,56"`` in addition to US ``"$1,234.56"``.
+* Money parser supports EU ``"1.234,56"`` and EU dot-thousands
+  ``"1.234.567"`` in addition to US ``"$1,234.56"``.
+* Regexes now parse GoFundMe's Apollo-state ``Money`` shape, where
+  ``currentAmount`` and ``goalAmount`` are nested objects whose value
+  sits under the ``amount`` child key
+  (``"currentAmount":{"__typename":"Money","amount":"22766","currencyCode":"EUR"}``).
+  The cheap flat-scalar form is still tried first.
 * Self-test runner (``python3 scripts/scrape_gofundme.py --self-test``)
   exercises the parser, the dry-run path (with ``fetch_url`` monkey-
   patched), the partial-parse preservation, the non-GoFundMe skip
@@ -74,8 +80,29 @@ DEFAULT_CONFIG_PATH = os.path.join(ROOT, 'config.json')
 
 # ───────────────────────── compiled regexes ────────────────
 # Primary: JSON-ish keys GoFundMe embeds in __NEXT_DATA__ / window.__INITIAL_STATE__.
-RE_JSON_CURRENT = re.compile(r'"currentAmount"\s*:\s*"?([\d.,]+)"?')
-RE_JSON_GOAL     = re.compile(r'"goalAmount"\s*:\s*"?([\d.,]+)"?')
+#
+# Real-world shape (verified against a fetched production page):
+#   "currentAmount":{"__typename":"Money","amount":"22,766","currencyCode":"EUR"}
+# i.e. the value is a *nested* Money object, with the actual amount under
+# the ``amount`` child key. Each regex below tries a flat scalar first
+# (group 1) and falls back to a path-aware match that walks into the
+# object's ``amount`` key (group 2). ``_grab`` iterates over both groups.
+RE_JSON_CURRENT = re.compile(
+    r'"currentAmount"\s*:\s*'
+    r'(?:'
+    r'"?([\d.,]+)"?'                               # flat scalar (older pages)
+    r'|'
+    r'\{[^{}]*"amount"\s*:\s*"?([\d.,]+)"?\s*[,\}]'  # nested Money object,
+    r')'                                               #    anchored on terminator
+)                                                      #    to avoid over-greedy
+RE_JSON_GOAL = re.compile(
+    r'"goalAmount"\s*:\s*'
+    r'(?:'
+    r'"?([\d.,]+)"?'
+    r'|'
+    r'\{[^{}]*"amount"\s*:\s*"?([\d.,]+)"?\s*[,\}]'
+    r')'
+)
 
 # Secondary JSON-shaped keys used on some campaign layouts.
 RE_JSON_AMOUNT_RAISED = re.compile(r'"amount_raised"\s*:\s*"?([\d.,]+)"?')
@@ -115,6 +142,14 @@ def parse_money(raw):
     s = re.sub(r'[^\d.,-]', '', s)
     if not s:
         return None
+    # Strip trailing punctuation that creeps in only when our regex pattern
+    # over-greedy-captures past the value boundary (e.g. ``"22,766,"``). Real
+    # money strings never end in ``,`` or ``.`` (they only end in the digit
+    # part after our scrub) so this is a safe normalisation that recovers
+    # both ``"22,766,"`` -> ``"22,766"`` and ``"22766,"`` -> ``"22766"``.
+    s = s.rstrip('.,')
+    if not s:
+        return None
 
     has_dot, has_comma = '.' in s, ',' in s
     if has_dot and has_comma:
@@ -131,6 +166,20 @@ def parse_money(raw):
             s = s.replace(',', '')                    # multiple thousands seps
         else:
             s = s.replace(',', '.')                  # decimal comma
+    elif has_dot:
+        # Heuristic: distinguish EU dot-thousands ("1.234.567" or
+        # "1.234") from a US decimal ("12.50"). If there are multiple
+        # dots OR exactly one dot followed by 3 digits with no decimal
+        # implication, treat as thousands separators.
+        parts = s.split('.')
+        if len(parts) > 2 and all(p.lstrip('-').isdigit() for p in parts):
+            s = s.replace('.', '')                    # multi-dot thousands
+        elif (len(parts) == 2
+              and len(parts[1]) == 3
+              and parts[0].lstrip('-').isdigit()
+              and parts[1].isdigit()):
+            s = s.replace('.', '')                    # single-dot thousands
+        # else: single dot with non-3-digit tail - leave as decimal
     try:
         return int(float(s))
     except (ValueError, TypeError):
@@ -202,8 +251,17 @@ def parse_gofundme(html):
     def _grab(*patterns):
         for p in patterns:
             m = p.search(html)
-            if m:
-                v = parse_money(m.group(1))
+            if not m:
+                continue
+            # Some patterns in this file use multiple capture groups
+            # (the ``RE_JSON_*`` patterns above expose group 1 for the
+            # flat scalar and group 2 for the nested Money object). Try
+            # each group in order until ``parse_money`` accepts one.
+            for gi in range(1, (m.lastindex or 0) + 1):
+                raw = m.group(gi)
+                if raw is None:
+                    continue
+                v = parse_money(raw)
                 if v is not None and v > 0:
                     return v
         return None
@@ -302,11 +360,16 @@ def main(argv=None):
 # Run with `python3 scripts/scrape_gofundme.py --self-test` to verify
 # (a) the module imports cleanly, (b) the historical regex bug is real,
 # (c) the fixed patterns parse a representative GoFundMe JSON snippet.
+#
+# This fixture mimics a current production GoFundMe Apollo-state payload:
+# ``currentAmount`` / ``goalAmount`` are nested Money objects whose
+# ``amount`` field carries the value as a string, often with the
+# locale's thousands separator (here: ``"22,766"`` EUR-style).
 _SELF_TEST_SNIPPET = """
 <script>
 window.__INITIAL_STATE__ = {
-  "currentAmount": "1234.50",
-  "goalAmount": "5000"
+  "currentAmount": {"__typename": "Money", "amount": "22,766", "currencyCode": "EUR"},
+  "goalAmount":    {"__typename": "Money", "amount": "26,000", "currencyCode": "EUR"}
 };
 </script>
 """
@@ -339,9 +402,10 @@ def _self_test():
         "out of date and needs another revision.")
     assert NEW_STYLE.search(plain) is not None
 
-    # 2. Combined parser returns both fields on the canonical snippet.
+    # 2. Combined parser returns both fields on the canonical snippet
+    #    (nested Money object, EU comma thousands).
     parsed = parse_gofundme(_SELF_TEST_SNIPPET)
-    assert parsed == {'raised': 1234, 'goal': 5000}, f"unexpected parse: {parsed!r}"
+    assert parsed == {'raised': 22766, 'goal': 26000}, f"unexpected parse: {parsed!r}"
 
     # 3. Short / empty inputs are safe (no crash, returns Nones).
     assert parse_gofundme('') == {'raised': None, 'goal': None}
@@ -380,8 +444,8 @@ def _self_test():
         # 6. Non-dry-run DOES mutate the config.
         changed = scrape_donations(cfg, dry_run=False)
         assert changed == [7]
-        assert cfg['donations'][0]['raised'] == 1234
-        assert cfg['donations'][0]['goal']   == 5000
+        assert cfg['donations'][0]['raised'] == 22766
+        assert cfg['donations'][0]['goal']   == 26000
 
         # 7. Non-GoFundMe platforms are skipped untouched.
         cfg2 = {
@@ -402,11 +466,22 @@ def _self_test():
     # 8. parse_money corner cases (regression for the new docstring).
     assert parse_money(None)            is None
     assert parse_money('')              is None
-    assert parse_money('$1,234.56')     == 1234     # cents silently truncated
-    assert parse_money('1.234,56')      == 1234     # EU style
+    assert parse_money('$1,234.56')     == 1234     # US: cents silently truncated
+    assert parse_money('1.234,56')      == 1234     # EU: dot-thousands + comma decimal
+    assert parse_money('1.234.567')     == 1234567  # EU: dot-only thousands, multi-dot
+    assert parse_money('1.234')        == 1234     # EU: dot-only thousands, single
+    assert parse_money('12.50')         == 12       # US decimal, NOT thousands
     assert parse_money('1234')          == 1234
     assert parse_money('not money')     is None
     assert parse_money('$$$')           is None     # empty after scrub
+
+    # 9. Real-world Apollo-state ``Money`` object shapes.
+    flat_only   = '{"goalAmount":"5000"}'
+    out_flat    = parse_gofundme(flat_only)
+    assert out_flat == {'raised': None, 'goal': 5000}, f"flat-only wrong: {out_flat!r}"
+    nested_only = '{"currentAmount":{"amount":"22766","currencyCode":"EUR"}}'
+    out_nested  = parse_gofundme(nested_only)
+    assert out_nested == {'raised': 22766, 'goal': None}, f"nested-only wrong: {out_nested!r}"
 
     print("scrape_gofundme self-test: OK")
 
