@@ -1,0 +1,36 @@
+# ───────────────── Python ─────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ───────────────── Editor / OS ─────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.bak
+
+# ───────────────── Build / test ─────────────────
+build/
+dist/
+*.log
+
+# ───────────────── Local secrets (none currently used) ─────────────────
+.env
+.env.*
+!.env.example
+
+# NOTE: donation-*.html, index.html, donation.html, config.json,
+# freebuff.toml, scripts/*.py are intentionally NOT ignored — they are
+# the deployable static site + configuration tracked on purpose.
