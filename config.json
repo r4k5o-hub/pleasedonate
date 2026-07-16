@@ -19,11 +19,11 @@
       "i18n": {
         "en": {
           "name": "Amelie's Wonderful Lift Fund",
-          "description": "This campaign supports Amelie — the funds will go toward installing a small lift to help Amelie reach the upper floor safely and independently."
+          "description": "This campaign supports Amelie — the funds will go toward installing a small lift to help Amelie reach the upper floor safely."
         },
         "de": {
           "name": "Amelies fabelhafter Lift",
-          "description": "Diese Kampagne unterstützt Amelie — die Spenden werden für die Installation eines kleinen Lifts verwendet, damit Amelie sicher und selbstständig die obere Etage erreichen kann."
+          "description": "Diese Kampagne unterstützt Amelie — die Spenden werden für die Installation eines kleinen Lifts verwendet, damit Amelie sicher die obere Etage erreichen kann."
         }
       }
     }
