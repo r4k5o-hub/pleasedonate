@@ -63,35 +63,75 @@ async function fetchViaProxy(url){
 
 function parseMoney(s){
   if(!s) return null;
-  const str = String(s).trim().replace(/[^\d.,]/g, '');
+  let str = String(s).trim().replace(/[^\d.,-]/g, '');
   if(!str) return null;
-  const num = parseInt(str.replace(/[,.]/g, ''));
-  return num > 0 ? num : null;
+  const lastDot   = str.lastIndexOf('.');
+  const lastComma = str.lastIndexOf(',');
+  if(lastDot >= 0 && lastComma >= 0){
+    if(lastComma > lastDot){
+      // EU: 1.234,56 -> strip dots, comma -> dot.
+      str = str.replace(/[.]/g, '').replace(/,/g, '.');
+    } else {
+      // US: 1,234.56 -> strip commas.
+      str = str.replace(/,/g, '');
+    }
+  } else if(lastComma >= 0){
+    const parts = str.split(',');
+    if(parts.length === 2 && parts[1].length === 3 && /^\d+$/.test(parts[0])){
+      str = str.replace(/,/g, '');                   // single thousands
+    } else if(parts.every(p => /^\d+$/.test(p))){
+      str = str.replace(/,/g, '');                   // multiple thousands
+    } else {
+      str = str.replace(/,/g, '.');                  // decimal comma
+    }
+  } else if(lastDot >= 0){
+    const parts = str.split('.');
+    if(parts.length > 2 && parts.every(p => /^\d+$/.test(p))){
+      str = str.replace(/[.]/g, '');                 // EU dot-thousands, multi
+    } else if(parts.length === 2 && parts[1].length === 3 &&
+              /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])){
+      str = str.replace(/[.]/g, '');                 // EU dot-thousands, single
+    }
+    // else: single dot with non-3-digit tail -> keep as decimal
+  }
+  const num = parseInt(parseFloat(str));
+  return Number.isFinite(num) && num > 0 ? num : null;
 }
 
 function parseGoFundMe(htmlText){
   if(!htmlText || htmlText.length < 500) return null;
-  
+
   let raised = null, goal = null;
-  
-  // Primary: Look for JSON fields in page
-  const jsonMatch = htmlText.match(/"currentAmount"\s*:\s*"?([0-9,.]+)"?/i);
-  if(jsonMatch && jsonMatch[1]) raised = parseMoney(jsonMatch[1]);
-  
-  const goalMatch = htmlText.match(/"goalAmount"\s*:\s*"?([0-9,.]+)"?/i);
-  if(goalMatch && goalMatch[1]) goal = parseMoney(goalMatch[1]);
-  
-  // Fallback: Look for displayed amounts
+
+  // Primary: match either a flat scalar OR the nested Apollo-state
+  // ``Money`` object GoFundMe now embeds ("currentAmount":{"__typename":
+  // "Money","amount":"22,766","currencyCode":"EUR"}). Each alternative
+  // exposes its own capture group; mangled with optional opening/closing
+  // quotes around flat scalars so we accept both `22766` and `"22766"`.
+  const jsonMatch = htmlText.match(/"currentAmount"\s*:\s*(?:"?([\d.,]+)"?|\{[^{}]*"amount"\s*:\s*"?([\d.,]+)"?[^{}]*\})/i);
+  if(jsonMatch){
+    const raw = jsonMatch[1] || jsonMatch[2];
+    if(raw) raised = parseMoney(raw);
+  }
+
+  const goalMatch = htmlText.match(/"goalAmount"\s*:\s*(?:"?([\d.,]+)"?|\{[^{}]*"amount"\s*:\s*"?([\d.,]+)"?[^{}]*\})/i);
+  if(goalMatch){
+    const raw = goalMatch[1] || goalMatch[2];
+    if(raw) goal = parseMoney(raw);
+  }
+
+  // Fallback: Look for displayed amounts (rare, used only when JS bundles
+  // failed to expose the JSON state).
   if(!raised){
-    const raisedTextMatch = htmlText.match(/raised["\s:]*\$?([0-9,.]+)/i);
+    const raisedTextMatch = htmlText.match(/raised["\s:]*\$?([\d.,]+)/i);
     if(raisedTextMatch && raisedTextMatch[1]) raised = parseMoney(raisedTextMatch[1]);
   }
-  
+
   if(!goal){
-    const goalTextMatch = htmlText.match(/goal["\s:]*\$?([0-9,.]+)/i);
+    const goalTextMatch = htmlText.match(/goal["\s:]*\$?([\d.,]+)/i);
     if(goalTextMatch && goalTextMatch[1]) goal = parseMoney(goalTextMatch[1]);
   }
-  
+
   if(raised && goal && raised > 0 && goal > 0) return {raised, goal};
   return null;
 }
